@@ -33,6 +33,9 @@ public:
    */
   ComportamientoTecnico(unsigned int size = 0) : Comportamiento(size) {
     // Inicializar Variables de Estado
+    last_action = IDLE;
+    tiene_zapatillas = false;
+    giro45Izq = 0;  
   }
 
   /**
@@ -161,10 +164,12 @@ protected:
    */
   bool es_camino(unsigned char c) const;
 
-    /**
- * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
- * @param plan  Lista de acciones del plan.
- */
+  bool es_sendero(unsigned char c) const;
+
+  /**
+   * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
+   * @param plan  Lista de acciones del plan.
+   */
   void PintaPlan(const list<Action> &plan);
 
 
@@ -188,7 +193,10 @@ private:
   // VARIABLES DE ESTADO (PUEDEN SER EXTENDIDAS POR EL ALUMNO)
   // =========================================================================
 
-  
+  Action last_action;       // Alamacena la última acción ejecutada
+  bool tiene_zapatillas;    // Indica si el agente tiene las zapatillas
+  int giro45Izq;            // Indica el número de giros a la izq que quedan por dar
+
 };
 
 #endif

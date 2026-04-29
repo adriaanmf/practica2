@@ -28,11 +28,91 @@ Action ComportamientoTecnico::think(Sensores sensores) {
   return accion;
 }
 
+/**
+ * @brief Determina si casilla viable por altura
+ * @param casilla tipo de terreno
+ * @param dif diferencia de altura entre casillas
+ * @return 'P' si no es accesible por altura y casilla en otro caso
+ */
+char ViablePorAlturaT (char casilla, int dif){
+  if (abs(dif) <= 1)
+    return casilla;
+  else
+    return 'P';
+}
+
+/**
+ * @brief Determina la mejor opción entre las 3 casillas que tiene delante
+ * @param i terreno que hay en la posición 1 de superficie (45 izq)
+ * @param c terreno que hay en la posición 2 de superficie (justo delante)
+ * @param d terreno que hay en la posición 3 de superficie (45 dch)
+ * @return 2 si es mejor WALK, 1 para TURN_SL y 3 para TURN_SR. 0 no hay nada interesante
+ */
+int VeoCasillaInteresanteT (char i, char c, char d){
+  if (c == 'U') return 2;
+  else if (i == 'U') return 1;
+  else if (d == 'U') return 3;
+  if (c == 'X') return 2;
+  else if (i == 'X') return 1;
+  else if (d == 'X') return 3;
+  if (c == 'C') return 2;
+  else if (i == 'C') return 1;
+  else if (d == 'C') return 3;
+  else return 0;
+}
 
 // Niveles del técnico
 Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
   Action accion = IDLE;
+  // El comportamiento de seguir un camino hasta encontrar una planta de T. Residuos
+  // Poner el valor de los sensores de visión sobre los mapas.
+  ActualizarMapa(sensores);
 
+  // Actualización de variables de estado
+  if (sensores.superficie[0] == 'D') tiene_zapatillas = true;
+  //Definición del comportamiento
+  if (sensores.superficie[0] == 'U'){ // Llegué a una 'U'
+    return IDLE;
+  }
+
+  char i = ViablePorAlturaT(sensores.superficie[1], sensores.cota[1]-sensores.cota[0]);
+  char c = ViablePorAlturaT(sensores.superficie[2], sensores.cota[2]-sensores.cota[0]);
+  char d = ViablePorAlturaT(sensores.superficie[3], sensores.cota[3]-sensores.cota[0]);
+
+  if(sensores.agentes[1] != '_'){
+    i = 'P';
+  }
+  if(sensores.agentes[2] != '_'){
+    c = 'P';
+  }
+  if(sensores.agentes[3] != '_'){
+    d = 'P';
+  }
+  
+  int pos = VeoCasillaInteresanteT(i, c, d);
+
+  switch (pos)
+  {
+  case 2:
+    accion = WALK;
+    break;
+  case 1: 
+    accion = TURN_SL;
+    break;
+  case 3: 
+    accion = TURN_SR; 
+    break;
+  default: 
+    if(aleatorio(10) < 6){ 
+      accion = TURN_SL;
+    }else{
+      accion = TURN_SR;
+    }
+    break;
+  }
+
+  // Devolver la siguiente accion a hacer
+  last_action = accion;
   return accion;
 }
 
@@ -45,6 +125,15 @@ bool ComportamientoTecnico::es_camino(unsigned char c) const {
   return (c == 'C' || c == 'D' || c == 'U');
 }
 
+/**
+ * @brief Comprueba si una celda es de tipo sendero transitable.
+ * @param c Carácter que representa el tipo de superficie.
+ * @return true si es camino ('S').
+ */
+bool ComportamientoTecnico::es_sendero(unsigned char c) const
+{
+  return (c == 'S');
+}
 
 /**
  * @brief Comportamiento reactivo del técnico para el Nivel 1.
@@ -52,7 +141,36 @@ bool ComportamientoTecnico::es_camino(unsigned char c) const {
  * @return Acción a realizar.
  */
 Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
-  return IDLE;
+Action accion = IDLE;
+  // El comportamiento de seguir un camino hasta encontrar una planta de T. Residuos
+  // Poner el valor de los sensores de visión sobre los mapas.
+  ActualizarMapa(sensores);
+
+  char i = ViablePorAlturaT(sensores.superficie[1], sensores.cota[1]-sensores.cota[0]);
+  char c = ViablePorAlturaT(sensores.superficie[2], sensores.cota[2]-sensores.cota[0]);
+  char d = ViablePorAlturaT(sensores.superficie[3], sensores.cota[3]-sensores.cota[0]);
+
+  bool esCamSenDelante = es_camino(c) || es_sendero(c);
+  bool esCamSenIzq = es_camino(i) || es_sendero(i);
+  bool esCamSenDer = es_camino(d) || es_sendero(d);
+
+  if(esCamSenDelante && sensores.agentes[2] == '_' && aleatorio(10) < 7){
+    accion = WALK;
+  }else if(esCamSenIzq && sensores.agentes[1] == '_'){
+    accion = TURN_SL;
+  }else if(esCamSenDer && sensores.agentes[3] == '_'){
+    accion = TURN_SR;
+  }else{
+    if(aleatorio(10) < 6){ 
+      accion = TURN_SL;
+    }else{
+      accion = TURN_SR;
+    }  
+  }
+
+  // Devolver la siguiente accion a hacer
+  last_action = accion;
+  return accion;
 }
 
 /**

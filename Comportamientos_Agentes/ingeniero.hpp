@@ -22,6 +22,9 @@ public:
    */
   ComportamientoIngeniero(unsigned int size = 0) : Comportamiento(size) {
     // Inicializar Variables de Estado
+    last_action = IDLE;
+    tiene_zapatillas = false;
+    giro45Izq = 0;
   }
 
   /**
@@ -115,8 +118,8 @@ protected:
 
   /**
    * @brief Actualiza la información del mapa interno basándose en los sensores.
-   * IMPORTANTE: Esta función ya está implementada. Actualiza mapaResultado y mapaCotas
-   * con la información de los 16 sensores (casilla actual + 15 casillas alrededor).
+   * Actualiza mapaResultado y mapaCotas
+   * con la información de los 16 sensores (casilla actual + 15 casillas alrededor)
    */
   void ActualizarMapa(Sensores sensores);
 
@@ -145,6 +148,8 @@ protected:
   ubicacion Delante(const ubicacion &actual) const;
 
   bool es_camino(unsigned char c) const;
+
+  bool es_sendero(unsigned char c) const;
 
   /**
  * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
@@ -182,6 +187,10 @@ private:
   // =========================================================================
   // VARIABLES DE ESTADO (PUEDEN SER EXTENDIDAS POR EL ALUMNO)
   // =========================================================================
+
+  Action last_action;       // Alamacena la última acción ejecutada
+  bool tiene_zapatillas;    // Indica si el agente tiene las zapatillas
+  int giro45Izq;            // Indica el número de giros a la izq que quedan por dar
 
 };
 
