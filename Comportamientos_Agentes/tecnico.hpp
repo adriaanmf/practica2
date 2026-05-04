@@ -19,7 +19,21 @@
  * El técnico colabora con el ingeniero para resolver el problema de instalación de tuberías
  */
 
+struct EstadoT {
+ ubicacion site;
+ bool zapatillas;
+ bool operator==(const EstadoT &st) const{
+ return site == st.site and zapatillas == st.zapatillas;
+ }
+};
 
+struct NodoT{
+ EstadoT estado;
+ list<Action> secuencia;
+ bool operator==(const NodoT &node) const{
+ return estado == node.estado;
+ }
+};
 
 class ComportamientoTecnico : public Comportamiento {
 public:
@@ -35,7 +49,6 @@ public:
     // Inicializar Variables de Estado
     last_action = IDLE;
     tiene_zapatillas = false;
-    giro45Izq = 0;  
   }
 
   /**
@@ -47,7 +60,8 @@ public:
                        std::vector<std::vector<unsigned char>> mapaC): 
                        Comportamiento(mapaR, mapaC) {
     // Inicializar Variables de Estado
-
+    tiene_zapatillas = false;
+    hayPlan = false;
   }
 
   ComportamientoTecnico(const ComportamientoTecnico &comport): Comportamiento(comport) {}
@@ -120,6 +134,13 @@ public:
  */
   Action ComportamientoTecnicoNivel_6(Sensores sensores);
 
+/**
+ * @brief Comportamiento del técnico para el Nivel E (especial tutorial parte 2)
+ * @param sensores Datos actuales de los sensores
+ * @return Acción a realizar
+ */
+  Action ComportamientoTecnicoNivel_E(Sensores sensores);
+
 protected:
   // =========================================================================
   // FUNCIONES PROPORCIONADAS
@@ -166,6 +187,9 @@ protected:
 
   bool es_sendero(unsigned char c) const;
 
+  list<Action> B_Anchura(const EstadoT &inicio, const EstadoT &final,
+                          const vector<vector<unsigned char>> &terreno, 
+                          const vector<vector<unsigned char>> &altura);
   /**
    * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
    * @param plan  Lista de acciones del plan.
@@ -195,7 +219,10 @@ private:
 
   Action last_action;       // Alamacena la última acción ejecutada
   bool tiene_zapatillas;    // Indica si el agente tiene las zapatillas
-  int giro45Izq;            // Indica el número de giros a la izq que quedan por dar
+
+  //Nivel E
+  list<Action> plan;        // Almacena el plan a ejecutar
+  bool hayPlan;             // Indica si hay un plan a ejecutar
 
 };
 

@@ -69,11 +69,9 @@ int VeoCasillaInteresanteI (char i, char c, char d, bool zap){
   if (c == 'U') return 2;
   else if (i == 'U') return 1;
   else if (d == 'U') return 3;
-  else if (!zap){
-    if (c == 'D') return 2;
-    else if (i == 'D') return 1;
-    else if (d == 'D') return 3;
-  }
+  if (c == 'D') return 2;
+  else if (i == 'D') return 1;
+  else if (d == 'D') return 3;
   if (c == 'X') return 2;
   else if (i == 'X') return 1;
   else if (d == 'X') return 3;
@@ -118,13 +116,33 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_0(Sensores sensores
   switch (pos)
   {
   case 2:
-    accion = WALK;
+    if(aleatorio(10) < 9){
+      accion = WALK;
+    }else if(i == 'C' && aleatorio(10) < 6){
+      accion = TURN_SL;
+    }else if(d == 'C'){
+      accion = TURN_SR;
+    }else{
+      if(aleatorio(10) < 5){ 
+        accion = TURN_SL;
+      }else{
+        accion = TURN_SR;
+      }  
+    }
     break;
   case 1:
-    accion = TURN_SL;
+    if(aleatorio(100) < 80){
+      accion = TURN_SL;
+    }else{
+      accion = TURN_SR;
+    }
     break;
   case 3:
-    accion = TURN_SR;
+    if(aleatorio(100) < 80){
+      accion = TURN_SR;
+    }else{
+      accion = TURN_SL;
+    }
     break;
   default:
    if(aleatorio(10) < 6){ 

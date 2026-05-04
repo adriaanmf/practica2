@@ -19,7 +19,8 @@ Action ComportamientoTecnico::think(Sensores sensores) {
     case 0: accion = ComportamientoTecnicoNivel_0(sensores); break;
     case 1: accion = ComportamientoTecnicoNivel_1(sensores); break;
     case 2: accion = ComportamientoTecnicoNivel_2(sensores); break;
-    case 3: accion = ComportamientoTecnicoNivel_3(sensores); break;
+    //case 3: accion = ComportamientoTecnicoNivel_3(sensores); break;
+    case 3: accion = ComportamientoTecnicoNivel_E(sensores); break;
     case 4: accion = ComportamientoTecnicoNivel_4(sensores); break;
     case 5: accion = ComportamientoTecnicoNivel_5(sensores); break;
     case 6: accion = ComportamientoTecnicoNivel_6(sensores); break;
@@ -94,16 +95,36 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
   switch (pos)
   {
   case 2:
-    accion = WALK;
+    if(aleatorio(100) < 95){
+      accion = WALK;
+    }else if(i == 'C' && aleatorio(10) < 6){
+      accion = TURN_SL;
+    }else if(d == 'C'){
+      accion = TURN_SR;
+    }else{
+      if(aleatorio(10) < 5){ 
+        accion = TURN_SL;
+      }else{
+        accion = TURN_SR;
+      }  
+    }
     break;
-  case 1: 
-    accion = TURN_SL;
+  case 1:
+    if(aleatorio(100) < 95){
+      accion = TURN_SL;
+    }else{
+      accion = TURN_SR;
+    }
     break;
-  case 3: 
-    accion = TURN_SR; 
+  case 3:
+    if(aleatorio(100) < 95){
+      accion = TURN_SR;
+    }else{
+      accion = TURN_SL;
+    }
     break;
-  default: 
-    if(aleatorio(10) < 6){ 
+  default:
+   if(aleatorio(10) < 6){ 
       accion = TURN_SL;
     }else{
       accion = TURN_SR;
@@ -171,6 +192,195 @@ Action accion = IDLE;
   // Devolver la siguiente accion a hacer
   last_action = accion;
   return accion;
+}
+
+list<Action> AvanzaASaltosDeCaballo(){
+  list<Action> secuencia;
+  secuencia.push_back(WALK);
+  secuencia.push_back(WALK);
+  secuencia.push_back(TURN_SR);
+  secuencia.push_back(TURN_SR);
+  secuencia.push_back(WALK);
+  return secuencia;
+}
+
+/**
+ * @brief Comportamiento del técnico para el Nivel E.
+ * @param sensores Datos actuales de los sensores.
+ * @return Acción a realizar.
+ */
+Action ComportamientoTecnico::ComportamientoTecnicoNivel_E(Sensores sensores) {
+  Action accion = IDLE;
+  if (!hayPlan){
+    // Invocar al método de búsqueda
+    EstadoT inicio, fin;
+    inicio.site.f = sensores.posF;
+    inicio.site.c = sensores.posC;
+    inicio.site.brujula = sensores.rumbo;
+    inicio.zapatillas = tiene_zapatillas;
+    fin.site.f = sensores.BelPosF;
+    fin.site.c = sensores.BelPosC;
+    plan = B_Anchura(inicio, fin, mapaResultado, mapaCotas);
+    VisualizaPlan(inicio.site,plan);
+    hayPlan = plan.size() != 0 ;
+  }
+  if (hayPlan and plan.size()>0){
+    accion = plan.front();
+    plan.pop_front();
+  }
+  if (plan.size()== 0){
+    hayPlan = false;
+  }
+  return accion;
+}
+
+EstadoT NextCasillaTécnico(const EstadoT &st){
+  EstadoT siguiente = st;
+  switch (st.site.brujula)
+  {
+  case norte:
+    siguiente.site.f = st.site.f - 1;
+    break;
+  case noreste:
+    siguiente.site.f = st.site.f - 1;
+    siguiente.site.c = st.site.c + 1;
+    break;
+  case este:
+    siguiente.site.c = st.site.c + 1;
+    break;
+  case sureste:
+    siguiente.site.f = st.site.f + 1;
+    siguiente.site.c = st.site.c + 1;
+    break;
+  case sur:
+    siguiente.site.f = st.site.f + 1;
+    break;
+  case suroeste:
+    siguiente.site.f = st.site.f + 1;
+    siguiente.site.c = st.site.c - 1;
+    break;
+  case oeste:
+    siguiente.site.c = st.site.c - 1;
+    break;
+  case noroeste:
+    siguiente.site.f = st.site.f - 1;
+    siguiente.site.c = st.site.c - 1;
+  }
+  return siguiente;
+} 
+
+bool CasillaAccesibleTécnico(const EstadoT &st, const vector<vector<unsigned char>> &terreno, const
+                              vector<vector<unsigned char>> &altura){
+  EstadoT next = NextCasillaTécnico(st);
+  bool check1 = false, check2 = false, check3 = false;
+  check1 = terreno[next.site.f][next.site.c] != 'P' and terreno[next.site.f][next.site.c] != 'M';
+  check2 = terreno[next.site.f][next.site.c] != 'B' or (terreno[next.site.f][next.site.c] == 'B' and st.zapatillas);
+  check3 = abs(altura[next.site.f][next.site.c] - altura[st.site.f][st.site.c]) <= 1;
+  return check1 and check2 and check3;
+} 
+
+EstadoT applyT(Action accion, const EstadoT & st, const vector<vector<unsigned char>> &terreno, const
+                vector<vector<unsigned char>> &altura){
+  EstadoT next = st;
+  switch(accion){
+  case WALK:
+    if (CasillaAccesibleTécnico(st,terreno,altura)){
+      next = NextCasillaTécnico(st);
+    }
+    break;
+  case TURN_SR:
+    next.site.brujula = (Orientacion) ((next.site.brujula+1)%8);
+    break;
+  case TURN_SL:
+    next.site.brujula = (Orientacion) ((next.site.brujula+7)%8);
+    break;
+  }
+  return next;
+}
+
+bool Find (const NodoT & st, const list<NodoT> &lista){
+  auto it = lista.begin();
+  while (it != lista.end() and !((*it) == st)){
+    it++;
+  }
+  return (it != lista.end());
+}
+
+/**
+ * @brief Primera aproximación a la búsqueda en anchura
+ * 
+ * @param inicio Estado Inicial de la búsqueda
+ * @param final Estado final de la búsqueda
+ * @param terreno Matriz que contiene la información del terreno
+ * @param altura Matriz que contiene la altura del mapa
+ * 
+ * @return La secuencia de acciones para llegar al estado final
+ * @note Devuelve un plan vacío si no es posible encontrar un plan válido
+ */
+list<Action> ComportamientoTecnico::B_Anchura(const EstadoT &inicio, const EstadoT &final,
+                          const vector<vector<unsigned char>> &terreno, 
+                          const vector<vector<unsigned char>> &altura){
+  NodoT current_node;
+  list<NodoT> frontier;
+  list<NodoT> explored;
+  list<Action> path;
+
+  current_node.estado = inicio;
+  frontier.push_back(current_node);
+  bool SolutionFound = (current_node.estado.site.f == final.site.f and current_node.estado.site.c == final.site.c);
+  while (!SolutionFound and !frontier.empty()){
+    frontier.pop_front();
+    explored.push_back(current_node);
+
+    // Compruebo si estoy en una casilla que da las zapatillas
+    if (terreno[current_node.estado.site.f][current_node.estado.site.c] == 'D'){
+      current_node.estado.zapatillas = true;
+    }
+
+    // Genero el hijo resultante de aplicar la acción WALK
+    NodoT child_Walk = current_node;
+    child_Walk.estado = applyT(WALK, current_node.estado, terreno, altura);
+    if (child_Walk.estado.site.f == final.site.f and child_Walk.estado.site.c == final.site.c){
+      // El hijo generado es solucion
+      child_Walk.secuencia.push_back(WALK);
+      current_node = child_Walk;
+      SolutionFound = true;
+    }
+    else if (!Find(child_Walk, frontier) and !Find(child_Walk, explored)){
+      // Se mete en la lista de frontier después de añadir a secuencia la acción
+      child_Walk.secuencia.push_back(WALK);
+      frontier.push_back(child_Walk);
+    }
+
+    if (!SolutionFound){
+      // El hijo resultante de aplicar la acción TURN_SR
+      NodoT child_TurnSR = current_node;
+      child_TurnSR.estado = applyT(TURN_SR, current_node.estado, terreno, altura);
+      if (!Find(child_TurnSR, frontier) and !Find(child_TurnSR, explored)){
+        child_TurnSR.secuencia.push_back(TURN_SR);
+        frontier.push_back(child_TurnSR);
+      }
+
+      // El hijo resultante de aplcar de aplicar la accion TURN_SL
+      NodoT child_TurnSL = current_node;
+      child_TurnSL.estado = applyT(TURN_SL, current_node.estado, terreno, altura);
+      if (!Find(child_TurnSL, frontier) and !Find(child_TurnSL, explored)){
+        child_TurnSL.secuencia.push_back(TURN_SL);
+        frontier.push_back(child_TurnSL);
+      }
+    }
+
+    // Paso a evaluar el siguiente nodo en la lista "frontier"
+    if (!SolutionFound and !frontier.empty()){
+      current_node = frontier.front();
+      SolutionFound = (current_node.estado.site.f == final.site.f and current_node.estado.site.c == final.site.c); 
+    }
+  }
+  // Devuelvo el camino encontrado
+  if (SolutionFound)
+    path = current_node.secuencia;
+  
+  return path;
 }
 
 /**
