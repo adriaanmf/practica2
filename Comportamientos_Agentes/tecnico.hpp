@@ -28,11 +28,20 @@ struct EstadoT {
 };
 
 struct NodoT{
- EstadoT estado;
- list<Action> secuencia;
- bool operator==(const NodoT &node) const{
- return estado == node.estado;
- }
+  EstadoT estado;
+  list<Action> secuencia;
+  bool operator==(const NodoT &node) const{
+    return estado == node.estado;
+  }
+  bool operator<(const NodoT &node) const{
+    if (estado.site.f < node.estado.site.f) return true;
+    else if (estado.site.f == node.estado.site.f and estado.site.c < node.estado.site.c) return true;
+    else if (estado.site.f == node.estado.site.f and estado.site.c == node.estado.site.c and estado.site.brujula <
+            node.estado.site.brujula) return true;
+    else if (estado.site.f == node.estado.site.f and estado.site.c == node.estado.site.c and estado.site.brujula ==
+            node.estado.site.brujula and estado.zapatillas < node.estado.zapatillas) return true;
+    else return false;
+  }
 };
 
 class ComportamientoTecnico : public Comportamiento {
@@ -190,6 +199,11 @@ protected:
   list<Action> B_Anchura(const EstadoT &inicio, const EstadoT &final,
                           const vector<vector<unsigned char>> &terreno, 
                           const vector<vector<unsigned char>> &altura);
+  
+  list<Action> B_Anchura_V2(const EstadoT &inicio, const EstadoT &final,
+                          const vector<vector<unsigned char>> &terreno, 
+                          const vector<vector<unsigned char>> &altura);
+
   /**
    * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
    * @param plan  Lista de acciones del plan.

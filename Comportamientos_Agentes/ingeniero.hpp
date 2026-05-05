@@ -10,6 +10,37 @@
 
 #include "comportamientos/comportamiento.hpp"
 
+struct EstadoI {
+  ubicacion site;
+  bool zapatillas;
+  bool operator==(const EstadoI &st) const{
+    return site == st.site and zapatillas == st.zapatillas;
+  }
+  bool operator<(const EstadoI &st) const {
+    if (site.f < st.site.f) return true;
+    else if (site.f > st.site.f) return false;
+
+    if (site.c < st.site.c) return true;
+    else if (site.c > st.site.c) return false;
+
+    if (site.brujula < st.site.brujula) return true;
+    else if (site.brujula > st.site.brujula) return false;
+
+    return zapatillas < st.zapatillas;
+  }
+};
+
+struct NodoI{
+  EstadoI estado;
+  list<Action> secuencia;
+  bool operator==(const NodoI &node) const{
+    return estado == node.estado;
+  }
+  bool operator<(const NodoI &node) const{
+    return estado < node.estado;
+  }
+};
+
 class ComportamientoIngeniero : public Comportamiento {
 public:
   // =========================================================================
@@ -24,7 +55,7 @@ public:
     // Inicializar Variables de Estado
     last_action = IDLE;
     tiene_zapatillas = false;
-    giro45Izq = 0;
+    hayPlan = false;
   }
 
   /**
@@ -36,6 +67,9 @@ public:
                          std::vector<std::vector<unsigned char>> mapaC): 
                          Comportamiento(mapaR, mapaC) {
     // Inicializar Variables de Estado
+    last_action = IDLE;
+    tiene_zapatillas = false;
+    hayPlan = false;
   }
 
   ComportamientoIngeniero(const ComportamientoIngeniero &comport)
@@ -151,6 +185,10 @@ protected:
 
   bool es_sendero(unsigned char c) const;
 
+  list<Action> B_Anchura_Ingeniero(const EstadoI &inicio, const EstadoI &final,
+                                                        const vector<vector<unsigned char>> &mapaTerreno,
+                                                        const vector<vector<unsigned char>> &mapaAlturas);
+
   /**
  * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
  * @param plan  Lista de acciones del plan.
@@ -190,8 +228,9 @@ private:
 
   Action last_action;       // Alamacena la última acción ejecutada
   bool tiene_zapatillas;    // Indica si el agente tiene las zapatillas
-  int giro45Izq;            // Indica el número de giros a la izq que quedan por dar
 
+  list<Action> plan;        // Almacena el plan a ejecutar
+  bool hayPlan;             // Indica si hay un plan a ejecutar
 };
 
 #endif
