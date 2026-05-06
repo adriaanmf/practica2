@@ -450,7 +450,176 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_2(Sensores sensores
  */
 Action ComportamientoIngeniero::ComportamientoIngenieroNivel_3(Sensores sensores)
 {
+  bool veoTecnico = false;
+  for(int i = 1; i < 16; i++){
+    if(sensores.agentes[i] != '_'){
+        veoTecnico = true;
+        break;
+    }
+  }
+  if(veoTecnico){
+    char c = ViablePorAlturaI(sensores.superficie[2], sensores.cota[2] - sensores.cota[0], tiene_zapatillas);
+    bool frenteLibre = (c != 'P' && c != 'M' && c != 'B' && sensores.agentes[2] == '_');
+    
+    if(frenteLibre){
+      return WALK;
+    }else{
+      return TURN_SR;
+    }
+  }
   return IDLE;
+}
+
+int BateriaOp(char terreno, int op){
+  if(op == 2){ // INSTALL
+    if(terreno == 'A') return 60;
+    if(terreno == 'H') return 45;
+    if(terreno == 'S') return 25;
+    if(terreno == 'C' || terreno == 'U') return 15;
+    return 30;
+  }
+  if(op == 1){ // RAISE
+    if(terreno == 'H') return 55;
+    if(terreno == 'S') return 30;
+    if(terreno == 'C' || terreno == 'U') return 10;
+    return 40;
+  }
+  if(op == -1){ // DIG
+    if(terreno == 'H') return 65;
+    if(terreno == 'S') return 40;
+    if(terreno == 'C' || terreno == 'U') return 25;
+    return 50;
+  }
+  return 0;
+}
+
+int ImpactoOp(char terreno, int op){
+  if(op == 2){ // INSTALL
+    if(terreno == 'A') return 50;
+    if(terreno == 'H') return 45;
+    if(terreno == 'S') return 25;
+    if(terreno == 'C' || terreno == 'U') return 15;
+    return 30;
+  }
+  if(op == 1){ // RAISE
+    if(terreno == 'H') return 55;
+    if(terreno == 'S') return 30;
+    if(terreno == 'C' || terreno == 'U') return 10;
+    return 40;
+  }
+  if(op == -1){ // DIG
+    if(terreno == 'H') return 65;
+    if(terreno == 'S') return 40;
+    if(terreno == 'C' || terreno == 'U') return 25;
+    return 50;
+  }
+  return 0;
+}
+
+list<Paso> ComportamientoIngeniero::algoritmoATuberias(const ubicacion &inicio,
+                                                        const vector<vector<unsigned char>> &terreno,
+                                                        const vector<vector<unsigned char>> &altura,
+                                                        int max_bateria, int max_eco){
+  priority_queue<NodoTuberia> frontier;
+  struct Costes{
+    int impacto;
+    int bateria;
+  };
+  map<EstadoTuberia, vector<Costes>> par_frontier;
+
+  int ops[3] = {0, 1, -1}; // NADA, RAISE, DIG
+    
+  for(int op : ops){
+    char bt = terreno[inicio.f][inicio.c];
+    int imp = altura[inicio.f][inicio.c];
+        
+    if(op == 1 && (bt == 'A' || bt == 'M' || bt == 'P' || bt == 'B' || imp >= 9)) continue;
+    if(op == -1 && (bt == 'A' || bt == 'M' || bt == 'P' || bt == 'B' || imp <= 1)) continue;
+
+    int nh = imp + op;
+    int i_cost = ImpactoOp(bt, op);
+    int b_cost = BateriaOp(bt, op);
+
+    if(i_cost > max_eco || b_cost > max_bateria) continue;
+
+    NodoTuberia nodo_inicio;
+    nodo_inicio.estado = {inicio.f, inicio.c, nh};
+    nodo_inicio.tramos = 1;
+    nodo_inicio.impacto = i_cost;
+    nodo_inicio.bateria = b_cost;
+    nodo_inicio.secuencia.push_back({inicio.f, inicio.c, op});
+
+    frontier.push(nodo_inicio);
+    par_frontier[nodo_inicio.estado].push_back({i_cost, b_cost});
+  }
+
+  int df[] = {-1, 1, 0, 0};
+  int dc[] = {0, 0, -1, 1};
+
+  while(!frontier.empty()){
+    NodoTuberia current_node = frontier.top();
+    frontier.pop();
+
+    int cf = current_node.estado.f;
+    int cc = current_node.estado.c;
+    int ch = current_node.estado.h;
+
+    if(terreno[cf][cc] == 'U'){
+      return current_node.secuencia;
+    }
+
+    char prev_t = terreno[cf][cc];
+
+    for(int i = 0; i < 4; ++i){
+      int nf = cf + df[i];
+      int nc = cc + dc[i];
+
+      if(nf < 0 || nf >= terreno.size() || nc < 0 || nc >= terreno[0].size()) continue;
+
+      char nt = terreno[nf][nc];
+      if(nt == 'M' || nt == 'P' || nt == 'B') continue;
+
+      int noh = altura[nf][nc];
+
+      for(int op : ops){
+        if(op == 1 && (nt == 'A' || nt == 'M' || nt == 'P' || nt == 'B' || noh >= 9)) continue;
+        if(op == -1 && (nt == 'A' || nt == 'M' || nt == 'P' || nt == 'B' || noh <= 1)) continue;
+
+        int nnh = noh + op;
+
+        if(ch - nnh != 0 && ch - nnh != 1) continue;
+
+        int i_cost = current_node.impacto + ImpactoOp(nt, op) + ImpactoOp(nt, 2) + ImpactoOp(prev_t, 2);
+        int b_cost = current_node.bateria + BateriaOp(nt, op) + BateriaOp(nt, 2) + BateriaOp(prev_t, 2);
+        int t_cost = current_node.tramos + 1;
+
+        if(i_cost > max_eco || b_cost > max_bateria) continue;
+
+        bool es_peor = false;
+        auto& rutas_conocidas = par_frontier[{nf, nc, nnh}];
+        for(const auto& c : rutas_conocidas){
+          if(c.impacto <= i_cost && c.bateria <= b_cost){
+            es_peor = true;
+            break;
+          }
+        }
+        if(!es_peor){
+          rutas_conocidas.push_back({i_cost, b_cost});
+                    
+          NodoTuberia next_node;
+          next_node.estado = {nf, nc, nnh};
+          next_node.tramos = t_cost;
+          next_node.impacto = i_cost;
+          next_node.bateria = b_cost;
+          next_node.secuencia = current_node.secuencia;
+          next_node.secuencia.push_back({nf, nc, op});
+                    
+          frontier.push(next_node);
+        }
+      }
+    }
+  }
+  return list<Paso>();
 }
 
 /**
@@ -460,6 +629,18 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_3(Sensores sensores
  */
 Action ComportamientoIngeniero::ComportamientoIngenieroNivel_4(Sensores sensores)
 {
+  if(!hayPlan){
+    ubicacion inicio;
+    inicio.f = sensores.BelPosF;
+    inicio.c = sensores.BelPosC;
+
+    list<Paso> plan_tub = algoritmoATuberias(inicio, mapaResultado, mapaCotas, sensores.energia, sensores.max_ecologico);
+
+    if(plan_tub.size() > 0){
+      VisualizaRedTuberias(plan_tub);
+      hayPlan = true;
+    }
+  }
   return IDLE;
 }
 
@@ -470,7 +651,136 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_4(Sensores sensores
  */
 Action ComportamientoIngeniero::ComportamientoIngenieroNivel_5(Sensores sensores)
 {
-  return IDLE;
+  Action accion = IDLE;
+
+  if(sensores.choque || sensores.reset) hayPlan = false;
+
+  switch(estadoNivel5){
+    case 0: // Ir a la Belkanita
+      accion = ComportamientoIngenieroNivel_2(sensores);
+      if(sensores.posF == sensores.BelPosF && sensores.posC == sensores.BelPosC){
+        estadoNivel5 = 1;
+        hayPlan = false;
+      }
+      break;
+    case 1: // Planificar la red de tuberías (De Belkanita a Base)
+    {
+      ubicacion belkanita = {sensores.BelPosF, sensores.BelPosC};
+      planConstruccion = algoritmoATuberias(belkanita, mapaResultado, mapaCotas, sensores.energia, sensores.max_ecologico);
+
+      if(!planConstruccion.empty()){
+        VisualizaRedTuberias(planConstruccion);
+        pasoActual = planConstruccion.front(); 
+        planConstruccion.pop_front();
+        estadoNivel5 = 2; 
+      }
+      break;
+    }
+    case 2: // Operar la casilla Belkanita
+      if(pasoActual.op == 1){
+        pasoActual.op = 0; 
+        accion = RAISE;
+      }else if(pasoActual.op == -1){
+        pasoActual.op = 0; 
+        accion = DIG;
+      }else{
+        estadoNivel5 = 3;
+      }
+      break;
+    case 3: // Extraer el siguiente tramo y hacer COME
+      if(planConstruccion.empty()){
+        estadoNivel5 = 6; 
+      }else{
+        pasoSiguiente = planConstruccion.front();
+        planConstruccion.pop_front();
+        
+        accion = COME; // El técnico recibe GotoF y GotoC
+        estadoNivel5 = 4;
+        hayPlan = false;
+      }
+      break;
+    case 4: // Moverse a la siguiente casilla
+    {
+      if(sensores.posF == pasoSiguiente.fil && sensores.posC == pasoSiguiente.col){
+        estadoNivel5 = 5; 
+        hayPlan = false;
+      }else{
+        if(!hayPlan){
+          EstadoI inicio, fin;
+          inicio.site.f = sensores.posF; 
+          inicio.site.c = sensores.posC;
+          inicio.site.brujula = sensores.rumbo; 
+          inicio.zapatillas = tiene_zapatillas;
+          fin.site.f = pasoSiguiente.fil; 
+          fin.site.c = pasoSiguiente.col;
+          plan = B_Anchura_Ingeniero(inicio, fin, mapaResultado, mapaCotas);
+          hayPlan = (plan.size() > 0);
+        }
+        if(hayPlan && !plan.empty()){
+          if(plan.front() == WALK && sensores.agentes[2] != '_'){
+            plan.clear();
+            bool derLibre = (sensores.superficie[3] != 'P' && sensores.superficie[3] != 'M' && sensores.superficie[3] != 'B' && sensores.agentes[3] == '_');
+            bool izqLibre = (sensores.superficie[1] != 'P' && sensores.superficie[1] != 'M' && sensores.superficie[1] != 'B' && sensores.agentes[1] == '_');
+             
+            if(derLibre){
+              plan.push_back(TURN_SR);
+              plan.push_back(WALK);
+            }else if(izqLibre){
+              plan.push_back(TURN_SL);
+              plan.push_back(WALK);
+            }else{
+              plan.push_back(TURN_SR); 
+            }
+             
+            accion = plan.front();
+            plan.pop_front();
+          }else{
+            accion = plan.front(); 
+            plan.pop_front();
+            if(plan.empty()) hayPlan = false;
+          }
+        } else { 
+          accion = TURN_SR; 
+          hayPlan = false; 
+        }
+      }
+      break;
+    }
+    case 5: // Operar terreno y colocar tuberias
+      if (pasoSiguiente.op == 1){
+        pasoSiguiente.op = 0; 
+        accion = RAISE;
+      }else if(pasoSiguiente.op == -1){
+        pasoSiguiente.op = 0; 
+        accion = DIG;
+      }else if(sensores.enfrente && sensores.agentes[2] != '_'){
+        accion = INSTALL;
+        pasoActual = pasoSiguiente; 
+        estadoNivel5 = 3; 
+      }else{
+        // Encarar al Técnico
+        int df = pasoActual.fil - sensores.posF;
+        int dc = pasoActual.col - sensores.posC;
+        Orientacion target = norte;
+        
+        if(df == -1 && dc == 0) target = norte;
+        else if(df == 0 && dc == 1) target = este;
+        else if(df == 1 && dc == 0) target = sur;
+        else if(df == 0 && dc == -1) target = oeste;
+
+        if(sensores.rumbo != target){
+          int diff = (target - sensores.rumbo + 8) % 8;
+          accion = (diff <= 4) ? TURN_SR : TURN_SL;
+        }else{
+          accion = IDLE; // Esperando al técnico
+        }
+      }
+      break;
+    case 6: // Fin de la operación
+      accion = IDLE;
+      break;
+  }
+  return accion;
 }
 
 /**

@@ -10,7 +10,7 @@
 
 #include "comportamientos/comportamiento.hpp"
 
-struct EstadoI {
+struct EstadoI{
   ubicacion site;
   bool zapatillas;
   bool operator==(const EstadoI &st) const{
@@ -38,6 +38,34 @@ struct NodoI{
   }
   bool operator<(const NodoI &node) const{
     return estado < node.estado;
+  }
+};
+
+struct EstadoTuberia{
+  int f;
+  int c;
+  int h;
+  bool operator<(const EstadoTuberia &otra) const{
+    if (f != otra.f) return f < otra.f;
+    if (c != otra.c) return c < otra.c;
+    return h < otra.h;
+  }
+  bool operator==(const EstadoTuberia &otra) const{
+    return f == otra.f && c == otra.c && h == otra.h;
+  }
+};
+
+struct NodoTuberia{
+  EstadoTuberia estado;
+  list<Paso> secuencia;
+  int tramos = 0;
+  int bateria = 0;
+  int impacto = 0;
+  
+  bool operator<(const NodoTuberia &otro) const{
+    if(tramos != otro.tramos) return tramos > otro.tramos; 
+    if(impacto != otro.impacto) return impacto > otro.impacto;
+    return bateria > otro.bateria;
   }
 };
 
@@ -186,9 +214,13 @@ protected:
   bool es_sendero(unsigned char c) const;
 
   list<Action> B_Anchura_Ingeniero(const EstadoI &inicio, const EstadoI &final,
-                                                        const vector<vector<unsigned char>> &mapaTerreno,
-                                                        const vector<vector<unsigned char>> &mapaAlturas);
-
+                                    const vector<vector<unsigned char>> &mapaTerreno,
+                                    const vector<vector<unsigned char>> &mapaAlturas);
+  
+  list<Paso> algoritmoATuberias(const ubicacion &inicio,const vector<vector<unsigned char>> &terreno,
+                                  const vector<vector<unsigned char>> &altura,
+                                  int max_bateria, int max_eco);
+  
   /**
  * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
  * @param plan  Lista de acciones del plan.
@@ -231,6 +263,12 @@ private:
 
   list<Action> plan;        // Almacena el plan a ejecutar
   bool hayPlan;             // Indica si hay un plan a ejecutar
+  
+  int estadoNivel5 = 0;    
+  list<Paso> planConstruccion;
+  Paso pasoActual;
+  Paso pasoSiguiente;
+
 };
 
 #endif

@@ -20,16 +20,32 @@
  */
 
 struct EstadoT {
- ubicacion site;
- bool zapatillas;
- bool operator==(const EstadoT &st) const{
- return site == st.site and zapatillas == st.zapatillas;
+  ubicacion site;
+  bool zapatillas;
+  bool operator==(const EstadoT &st) const{
+    return site == st.site and zapatillas == st.zapatillas;
  }
+  bool operator<(const EstadoT &st) const {
+    if(site.f != st.site.f){
+        return site.f < st.site.f;
+    }
+    if(site.c != st.site.c){
+        return site.c < st.site.c;
+    }
+    if(site.brujula != st.site.brujula){
+        return site.brujula < st.site.brujula;
+    }
+    return zapatillas < st.zapatillas;
+  }
 };
 
 struct NodoT{
   EstadoT estado;
   list<Action> secuencia;
+  int g = 0;
+  int h = 0;
+  int f() const{ return g + h; }
+
   bool operator==(const NodoT &node) const{
     return estado == node.estado;
   }
@@ -41,6 +57,12 @@ struct NodoT{
     else if (estado.site.f == node.estado.site.f and estado.site.c == node.estado.site.c and estado.site.brujula ==
             node.estado.site.brujula and estado.zapatillas < node.estado.zapatillas) return true;
     else return false;
+  }
+};
+
+struct ComparadorNodoT{
+  bool operator()(const NodoT &a, const NodoT &b) const{
+    return a.f() > b.f() || (a.f() == b.f() && a.g > b.g);
   }
 };
 
@@ -204,6 +226,9 @@ protected:
                           const vector<vector<unsigned char>> &terreno, 
                           const vector<vector<unsigned char>> &altura);
 
+  list<Action> algoritmoA(const EstadoT &inicio, const EstadoT &final,
+                          const vector<vector<unsigned char>> &terreno, 
+                          const vector<vector<unsigned char>> &altura);
   /**
    * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
    * @param plan  Lista de acciones del plan.
@@ -237,6 +262,11 @@ private:
   //Nivel E
   list<Action> plan;        // Almacena el plan a ejecutar
   bool hayPlan;             // Indica si hay un plan a ejecutar
+
+  int estadoNivel5 = 0;
+  int f_obj = -1;
+  int c_obj = -1;
+  bool hasEstadoCOME = false;
 
 };
 
